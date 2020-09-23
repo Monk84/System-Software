@@ -22,12 +22,26 @@ when choosing "file", specify filename by address
 *******************************************************************************/
 
 #include <iostream>
-#include "RegExSolution"
+#include <fstream>
+#include "RegExSolution.h"
+#include "FSMSolution.h"
 
 using namespace std;
 
 int main( int argc,char* argv[] )
 {
-    
+  bool type_fsm = True;
+  bool type_input_console = True;
+  bool type_output_console = True;
+    if( argc > 1 )
+      switch( *(argv[1]+1) ):
+      case 't'
+      {
+        
+      }
+      if( *(argv[1]+1) == 't')
+        if( argv[2] && *argv[2] == '' )
+          type_fsm = False;
+      
     return 0;
 }
