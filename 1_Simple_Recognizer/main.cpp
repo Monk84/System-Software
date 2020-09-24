@@ -31,15 +31,14 @@ using namespace std;
 std::string GetHash( const std::string& line )
 {
     //assumed that string is valid, behavior is undefined for invalid string
-    std::regex r( "\\|[0-9a-f]+\\|/" );
+    std::regex r( "[a-f0-9]+(?=(\\|/))" );
     std::smatch m;
     std::regex_search( line,m,r );
     if( m.length() < 1 )
     {
         return std::string( "" );
     }
-    std::string result = m.str( 0 );
-    return result.substr( 1,result.size()-3 );
+    return m.str( 0 );
 }
 
 int main( int argc,char* argv[] )
