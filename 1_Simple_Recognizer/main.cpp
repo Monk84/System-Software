@@ -181,7 +181,6 @@ int main( int argc,char* argv[] )
         std::getline( input,line );
         std::cout << std::endl;
         bool res = (*exec_func)(line);
-        std::cout << res;
         if( res )
         {
             std::string hash = GetHash( line );
