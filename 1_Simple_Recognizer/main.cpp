@@ -31,14 +31,27 @@ using namespace std;
 std::string GetHash( const std::string& line )
 {
     //assumed that string is valid, behavior is undefined for invalid string
-    std::regex r( "[a-f0-9]+(?=(\\|/))" );
+    std::regex r( "[a-fA-F0-9]+(?=(\\|/))" );
     std::smatch m;
     std::regex_search( line,m,r );
     if( m.length() < 1 )
     {
         return std::string( "" );
     }
-    return m.str( 0 );
+    std::string result = m.str(0);
+    for( char& c : result )
+    {
+        c = std::tolower( c );
+    }
+    return result;
+}
+
+typedef bool (FSMSolution::*pCheck)( const std::string& );
+FSMSolution fsm;
+bool FSM_Check_String( const std::string& s )
+{
+    pCheck f = &FSMSolution::CheckString;
+    return (fsm.*f)( s );
 }
 
 int main( int argc,char* argv[] )
@@ -128,18 +141,17 @@ int main( int argc,char* argv[] )
         }
     }
     
-    FSMSolution* fsmsol;
     std::map<std::string,int> stats;
     bool (*exec_func)( const std::string& s );
     std::istream input( NULL );
     std::ostream output( NULL );
     if( type_fsm )
     {
-        exec_func = &RegExSolution;
+        exec_func = &FSM_Check_String;
     }
     else
     {
-        exec_func = &(fsmsol->CheckString);
+        exec_func = &RegExSolution;
     }
     if( type_input_console )
     {
@@ -167,13 +179,16 @@ int main( int argc,char* argv[] )
     {
         std::string line;
         std::getline( input,line );
-        if( exec_func(line) )
+        std::cout << std::endl;
+        bool res = (*exec_func)(line);
+        std::cout << res;
+        if( res )
         {
             std::string hash = GetHash( line );
             ++stats[hash];
         }
     }
-    output << "Statistics:\nHash - number'o'occurencies";
+    output << "Statistics:\nHash - number'o'occurencies\n";
     for( auto pair : stats )
     {
         output << std::get<0>(pair) << " - " << std::get<1>(pair) << std::endl;
