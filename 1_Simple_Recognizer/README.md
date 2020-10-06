@@ -11,7 +11,7 @@ execution output statistics for correct lines based on hash value into both file
 or console.
 
 ## Syntax 
-`sr [-t [fsm|reg]] [-i [console|file [filename]]] [-o [console|file [filename]]]`  
+`sr.exe [-t [fsm|reg]] [-i [console|file [filename]]] [-o [console|file [filename]]]`  
 -t - type of solution (default fsm)  
 reg = RegEx  
 fsm = finite state machine  
