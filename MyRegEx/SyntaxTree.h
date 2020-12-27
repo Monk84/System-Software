@@ -39,7 +39,6 @@ private:
 		OperatorCapture, //this time ch is group id
 		OperatorCaptureCall, 
 		Leaf,
-		LeafCaprure, //if named group captures only one symbol, we have to remember it
 	};
 	class Node
 	{
@@ -135,13 +134,21 @@ private:
 	private:
 		Node* parent;
 		std::vector<Node*> children;
+		friend void MergeUnary( SyntaxTree::Node* n,NFSM& main,NFSM& nfsm );
+		friend void MergeBinary( SyntaxTree::Node* n,NFSM& main,NFSM& nfsm1,NFSM& nfsm2 );
 	};
 public:
 	SyntaxTree( const std::string& s );
+	SyntaxTree( Node* rt ) 
+		:
+		root( rt )
+	{};
 	void Print() const;
 	template<typename container,typename registry>
 	friend void InitializeCaptureGroup( container& cont,int beg,int& end,registry& reg,bool initialize );
 	friend class NFSM;
+	friend void MergeUnary( SyntaxTree::Node* n,NFSM& main,NFSM& nfsm );
+	friend void MergeBinary( SyntaxTree::Node* n,NFSM& main,NFSM& nfsm1,NFSM& nfsm2 );
 private:
 	Node* root;
 	std::vector<Node*> capturegroups;
@@ -175,7 +182,6 @@ void InitializeCaptureGroup( container& cont,int beg,int& end,registry& reg,bool
 	std::string name = "";
 	while ( cont[beg]->text != '>' && beg != end )
 	{
-		if(  )
 		cont.erase( cont.begin() + beg );
 		end -= 1;
 		name.push_back( cont[beg]->text );
@@ -196,11 +202,6 @@ void InitializeCaptureGroup( container& cont,int beg,int& end,registry& reg,bool
 		reg.push_back( name );
 		cont[beg]->type = SyntaxTree::NodeType::OperatorCapture;
 		cont[beg]->text = id;
-		if ( beg + 1 == end )
-		{
-			end += 1;
-			cont.insert( cont.begin() + beg + 1,new Node( SyntaxTree::NodeType::LeafCaprure,0 ) );
-		}
 	}
 	else //usage of capture group
 	{
@@ -218,10 +219,20 @@ SyntaxTree::SyntaxTree( const std::string& s )
 	ss.insert( 0,1,'(' );
 	std::vector<Node*> newstring = {};
 	std::vector<std::string> captures = {};
-	std::vector<char> operators = { '|','*','+','.','?' };
+	std::vector<char> operators = { '|','*','+','.','?','{' };
 	for ( char c : ss )
 	{
 		newstring.push_back( new Node{ c,NodeType::None } );
+	}
+	//preprecheck for ecraned symbols
+	for ( int i = 0; i < newstring.size() - 2; ++i )
+	{
+		if ( newstring[i]->text == '%' && newstring[i + 2]->text == '%' )
+		{
+			newstring.erase( newstring.begin() + i + 2 );
+			newstring.erase( newstring.begin() + i );
+			newstring[i]->type = NodeType::Leaf;
+		}
 	}
 	while ( newstring.size() != 1 )
 	{
@@ -237,19 +248,6 @@ SyntaxTree::SyntaxTree( const std::string& s )
 			if ( newstring[i]->type == NodeType::None )
 			{
 				char temp = newstring[i]->text;
-				//ecraned symbols
-				if ( temp == '%' )
-				{
-					if ( i + 2 < nearest.second )
-						if ( newstring[i + 2]->text == '%' && newstring[i + 1]->type == NodeType::None )
-						{
-							nearest.second -= 2;
-							newstring.erase( newstring.begin() + i + 2 );
-							newstring.erase( newstring.begin() + i );
-							newstring[i]->type = NodeType::Leaf;
-							continue;
-						}
-				}
 				if ( std::find( operators.begin(),operators.end(),temp ) != operators.end() )
 				{
 					continue;
@@ -292,6 +290,33 @@ SyntaxTree::SyntaxTree( const std::string& s )
 					newstring.erase( newstring.begin() + i - 1 );
 					i -= 1;
 					break;
+				case '{':
+					int repet = 0;
+					newstring.erase( newstring.begin() + i );
+					nearest.second -= 1;
+					while ( newstring[i]->text != '}' && i != nearest.second )
+					{
+						int num = int( newstring[i]->text - '0' );
+						if ( num >= 10 || num < 0 )
+						{
+							throw ParsingException( "SyntaxTree: invalid symbols inside repetition operator instruction" );
+						}
+						repet = repet * 10 + num;
+						newstring.erase( newstring.begin() + i );
+						nearest.second -= 1;
+					}
+					if ( i == nearest.second )
+					{
+						throw ParsingException( "SyntaxTree: didn't found closing curved brace ('}')" );
+					}
+					repet = (repet > 255) ? 255 : repet;
+					newstring[i]->type = NodeType::OperatorRepeat;
+					newstring[i]->text = char( repet );
+					newstring[i]->AddChild( newstring[i - 1] );
+					newstring.erase( newstring.begin() + i - 1 );
+					i -= 1;
+					nearest.second -= 1;
+					break;
 				}
 			}
 		}
@@ -331,9 +356,9 @@ SyntaxTree::SyntaxTree( const std::string& s )
 		//fifth iteration: capture group activation
 		if ( newstring[nearest.first + 1]->type == NodeType::OperatorCapture )
 		{
-			newstring[nearest.first + 1]->AddChild( newstring[nearest.first + 2] );
+			capturegroups.push_back( newstring[nearest.first + 2] );
 			newstring.erase( newstring.begin() + nearest.first + 2 );
-			capturegroups.push_back( newstring[nearest.first + 1] );
+			delete newstring[nearest.first + 1];
 			newstring[nearest.first + 1] = new Node( newstring[nearest.first + 1]->text,NodeType::OperatorCaptureCall );
 			nearest.second -= 1;
 		}
