@@ -2,7 +2,7 @@
 Prepared by student Amir Kiamov
 Variant 5
 # Description
-Escape sequence is %s%, where s - metasymbol
+Escape sequence is %s%, where s - metasymbol  
 Operations supported:
 - or '|'
 - concat 
